@@ -1,7 +1,6 @@
 "use strict";
 var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512'; //amzn1.ask.skill.6c2c61f8-54a6-40cc-a17b-ac23d00e46ba;  // TODO replace with your app ID (OPTIONAL).
 
-var GAME_SIZE = 301; // The starting value of the game
 var GAME_STATES = {
     START: "_STARTMODE", // Entry point, start the game.
     SCORE: "_SCOREMODE", // Scoring mode.
@@ -30,9 +29,11 @@ var languageString = {
             "START_UNHANDLED": "Say start to start a new game.",
             "SCORE_UNHANDLED": "Try saying I scored 180",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
-            "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">301</say-as>.",
-            "WELCOME_TEXT": "I will keep score for your game of 301.",
-            "REMAINDER_MESSAGE": "You have %s remaining",
+            "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
+            "WELCOME_TEXT": "I will keep score for your game of %s.",
+            "SET_START_SCORE_MESSAGE": "This game will start from <say-as interpret-as=\"spell-out\">%s</say-as>.",
+            "BAD_START_SCORE_MESSAGE": "I did not understand your start score",
+            "START_SCORE_RANGE_MESSAGE": "The start score must be between <say-as interpret-as=\"spell-out\">101</say-as> and 1000 and 1",
             "LAST_SCORE_MESSAGE": "Your last score was %s",
             "NO_LAST_SCORE_MESSAGE": "You have not scored yet",
             "GAME_OVER_MESSAGE": "Thank you for playing!",
@@ -72,6 +73,7 @@ var newSessionHandlers = {
       //initialize the attributes if this is the first time
       if(Object.keys(this.attributes).length === 0) {
           this.attributes['scores'] = new Array();
+          this.attributes['startScore'] = 301;
           this.attributes['gamesPlayed'] = 0;
           this.attributes['dartNum'] = 1;
       }
@@ -95,7 +97,7 @@ var newSessionHandlers = {
 
 var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
     "StartGame": function () {
-        var speechOutput = this.t("NEW_GAME_MESSAGE", this.t("GAME_NAME")) + this.t("WELCOME_MESSAGE");
+        var speechOutput = this.t("NEW_GAME_MESSAGE", this.t("GAME_NAME")) + this.t("WELCOME_MESSAGE", this.attributes['startScore'].toString());
         var repromptText = speechOutput;
 
         this.attributes['scores'] = []; //remove all scores
@@ -103,7 +105,7 @@ var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
 
         // Set the current state to score mode. The skill will now use handlers defined in scoreStateHandlers
         this.handler.state = GAME_STATES.SCORE;
-        this.emit(":askWithCard", speechOutput, repromptText, this.t("GAME_NAME"), this.t("WELCOME_TEXT"));
+        this.emit(":askWithCard", speechOutput, repromptText, this.t("GAME_NAME"), this.t("WELCOME_TEXT", this.attributes['startScore'].toString()));
     }
 });
 
@@ -126,6 +128,22 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     "LastScoreIntent": function () {
       var speechOutput = lastScoreSpeech.call(this);
       this.emit(":ask", speechOutput, speechOutput);
+    },
+
+    "SetStartScoreIntent": function () {
+      var speechOutput = "";
+      var repromptSpeech = "";
+      var startScoreSlotValid = isStartScoreSlotValid(this.event.request.intent);
+      if (startScoreSlotValid) {
+        var startScore = parseInt(this.event.request.intent.slots.StartScore.value);
+        this.attributes['startScore'] = startScore;
+        speechOutput = this.t("SET_START_SCORE_MESSAGE", startScore);
+        this.emit(":tell", speechOutput);
+      } else {
+        speechOutput = this.t("SET_START_SCORE_MESSAGE", startScore);
+        repromptSpeech = this.t("START_SCORE_RANGE_MESSAGE");
+        this.emit(":ask", speechOutput, repromptSpeech);
+      };
     },
 
     "RemoveLastScoreIntent": function () {
@@ -457,6 +475,13 @@ function isScoreSlotValid(intent) {
     return answerSlotIsInt && parseInt(intent.slots.RoundScore.value) <= 180 && parseInt(intent.slots.RoundScore.value) >= 0;
 }
 
+//make sure the start score is a number between 101 and 1001
+function isStartScoreSlotValid(intent) {
+    var answerSlotFilled = intent && intent.slots && intent.slots.StartScore && intent.slots.StartScore.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.StartScore.value));
+    return answerSlotIsInt && parseInt(intent.slots.StartScore.value) <= 1001 && parseInt(intent.slots.StartScore.value) >= 101;
+}
+
 //Calculate the sum of all scores and subtract from the game total
 function remainingValue() {
   var scores = this.attributes['scores'];
@@ -465,8 +490,8 @@ function remainingValue() {
   if (scores.length > 0) {
     totalScore = scores.reduce(function(a, b) { return a + b; });
   }
-  console.log("DEBUG: scores= " + scores.toString() + " GAME_SIZE= " + GAME_SIZE.toString());
-  return GAME_SIZE - totalScore;
+  console.log("DEBUG: scores= " + scores.toString() + " startScore= " + this.attributes['startScore'].toString());
+  return this.attributes['startScore'] - totalScore;
 }
 
 function statistics() {
@@ -483,7 +508,7 @@ function statistics() {
   return {
     numRounds: numRounds,
     totalScore: totalScore,
-    remaining: GAME_SIZE - totalScore,
+    remaining: this.attributes['startScore'] - totalScore,
     ppdScore: Math.round(avgScore/3), // Points Per Dart
     minScore: minScore,
     maxScore: maxScore
