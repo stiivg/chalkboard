@@ -48,6 +48,7 @@ var languageString = {
             "BULL_WORD": "Bull",
             "WIN_TARGET": "You need double %s for the win",
             "BUST_MESSAGE": "Bust, you still have %s remaining",
+            "NO_BUST_MESSAGE": "You cannot bust with %s remaining",
             "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per dart",
             "WON_UNHANDLED": "This game is over"
         }
@@ -139,6 +140,20 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       }
     },
 
+    "BustIntent": function () {
+      var speechOutput = "";
+      var scores = this.attributes['scores'];
+      var remaining = remainingValue.call(this);
+      if (scores.length > 0 && remaining <= 180) { //ensure bust is possible
+        scores[scores.length-1] = 0; //convert bust score to zero
+        remaining = remainingValue.call(this); //re-calc remaining
+        speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
+      } else {
+        speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
+      }
+      this.emit(":tell", speechOutput);
+    },
+
     "StatisticsIntent": function () {
         handleStatistics.call(this);
     },
@@ -195,6 +210,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in score state: " + this.event.request.reason);
+        this.attributes['scores'] = scores;
         this.emit(':tell', "Goodbye!");
 }
 });
@@ -329,7 +345,7 @@ function isEven(n) {
 //supports T20, D19, B, DB, 18
 function targetToSpeech(target) {
   var speechOutput = "";
-  console.log("DEBUG: target = " + target);
+  // console.log("DEBUG: target = " + target);
   if (target.startsWith("T")) {
     speechOutput = this.t("TREBLE_WORD")
   } else if (target.startsWith("D")) {
@@ -341,7 +357,7 @@ function targetToSpeech(target) {
     speechOutput += " " + this.t("BULL_WORD");
   }
   var targetNum = target.replace( /^\D+/g, ''); // replace all leading non-digits with nothing
-  console.log("DEBUG: targetNum = " + targetNum.toString());
+  // console.log("DEBUG: targetNum = " + targetNum.toString());
   if (targetNum.length > 0) { //add trailing number if exists
     speechOutput += " " + parseInt(targetNum).toString() + ", ";
   }
@@ -361,7 +377,7 @@ function handleUserScore() {
       scores.push(parseInt(this.event.request.intent.slots.RoundScore.value));
       var remaining = remainingValue.call(this);
       if (remaining < 0 || remaining == 1) {
-        scores.pop();
+        scores[scores.length-1] = 0; //convert bust score to zero
         remaining = remainingValue.call(this); //re-calc remaining
         speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
       } else if (remaining == 0) { //the game has been won
@@ -449,7 +465,7 @@ function remainingValue() {
   if (scores.length > 0) {
     totalScore = scores.reduce(function(a, b) { return a + b; });
   }
-  console.log("DEBUG: scores= " + scores.toString() + "GAME_SIZE= " + GAME_SIZE.toString());
+  console.log("DEBUG: scores= " + scores.toString() + " GAME_SIZE= " + GAME_SIZE.toString());
   return GAME_SIZE - totalScore;
 }
 
