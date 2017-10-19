@@ -144,9 +144,9 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       var speechOutput = "";
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
-      if (scores.length > 0 && remaining <= 180) { //ensure bust is possible
-        scores[scores.length-1] = 0; //convert bust score to zero
-        remaining = remainingValue.call(this); //re-calc remaining
+      if (remaining <= 180) { //ensure bust is possible
+        scores.push(0); //add a zero round for statistics
+        this.attributes['scores']= scores;
         speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
