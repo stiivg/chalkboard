@@ -31,6 +31,7 @@ var languageString = {
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "WELCOME_TEXT": "I will keep score for your game of %s.",
+            "REMAINDER_MESSAGE": "You have %s remaining",
             "SET_START_SCORE_MESSAGE": "This game will start from <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "BAD_START_SCORE_MESSAGE": "I did not understand your start score",
             "START_SCORE_RANGE_MESSAGE": "The start score must be between <say-as interpret-as=\"spell-out\">101</say-as> and 1000 and 1",
@@ -112,7 +113,15 @@ var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
 
 var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     "LaunchRequest": function () {
-        var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
+      //initialize the attributes if this is the first time
+      if(Object.keys(this.attributes).length === 0) {
+          this.attributes['scores'] = new Array();
+          this.attributes['startScore'] = 301;
+          this.attributes['gamesPlayed'] = 0;
+          this.attributes['dartNum'] = 1;
+      }
+
+      var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
         this.emit(":ask", speechOutput, speechOutput);
     },
     "ScoreIntent": function () {
