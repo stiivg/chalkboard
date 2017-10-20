@@ -146,10 +146,10 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       if (startScoreSlotValid) {
         var startScore = parseInt(this.event.request.intent.slots.StartScore.value);
         this.attributes['startScore'] = startScore;
-        speechOutput = this.t("SET_START_SCORE_MESSAGE", startScore);
+        speechOutput = this.t("SET_START_SCORE_MESSAGE", startScore.toString());
         this.emit(":tell", speechOutput);
       } else {
-        speechOutput = this.t("SET_START_SCORE_MESSAGE", startScore);
+        speechOutput = this.t("BAD_START_SCORE_MESSAGE");
         repromptSpeech = this.t("START_SCORE_RANGE_MESSAGE");
         this.emit(":ask", speechOutput, repromptSpeech);
       };
