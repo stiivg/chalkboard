@@ -1,5 +1,5 @@
 "use strict";
-var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512'; //amzn1.ask.skill.6c2c61f8-54a6-40cc-a17b-ac23d00e46ba;  // TODO replace with your app ID (OPTIONAL).
+var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512';
 
 var GAME_STATES = {
     START: "_STARTMODE", // Entry point, start the game.
@@ -40,6 +40,7 @@ var languageString = {
             "GAME_OVER_MESSAGE": "Thank you for playing!",
             "SCORE_IS_MESSAGE": "Your score is %s. ",
             "BAD_SCORE": "I did not understand your score",
+            "BAD_DART_SCORE": "I did not understand your dart score",
             "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per dart of %s",
             "SINGLE_STATISTICS_MESSAGE": "After your first round you scored %s and have %s remaining.",
             "NO_OUT": "No three dart out",
@@ -77,7 +78,7 @@ var newSessionHandlers = {
           this.attributes['scores'] = new Array();
           this.attributes['startScore'] = 301;
           this.attributes['gamesPlayed'] = 0;
-          this.attributes['dartNum'] = 1;
+          this.attributes['dartScores'] = new Array();
       }
 
       this.handler.state = GAME_STATES.START;
@@ -103,7 +104,7 @@ var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
         var repromptText = speechOutput;
 
         this.attributes['scores'] = []; //remove all scores
-        this.attributes['dartNum'] = 1;
+        this.attributes['dartScores'] = [];
 
         // Set the current state to score mode. The skill will now use handlers defined in scoreStateHandlers
         this.handler.state = GAME_STATES.SCORE;
@@ -119,7 +120,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
           this.attributes['scores'] = new Array();
           this.attributes['startScore'] = 301;
           this.attributes['gamesPlayed'] = 0;
-          this.attributes['dartNum'] = 1;
+          this.attributes['dartScores'] = new Array();
       }
 
       var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
@@ -127,6 +128,10 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "ScoreIntent": function () {
         handleUserScore.call(this);
+    },
+
+    "DartScoreIntent": function () {
+        handleUserDartScore.call(this);
     },
 
     "RemainderIntent": function () {
@@ -156,6 +161,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       };
     },
 
+    //TODO remove last dart score
     "RemoveLastScoreIntent": function () {
       var scores = this.attributes['scores'];
       if (scores.length > 0) {
@@ -173,6 +179,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
       if (remaining <= 180) { //ensure bust is possible
+        this.attributes['dartScores'] = []; //remove all dart scores
         scores.push(0); //add a zero round for statistics
         this.attributes['scores']= scores;
         speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
@@ -187,6 +194,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
       if (remaining <= 170) { //ensure win is possible
+        this.attributes['dartScores'] = []; //remove all dart scores
         scores.push(remaining); //must have scored remainder
         this.attributes['scores']= scores;
         this.handler.state = GAME_STATES.WON;
@@ -202,7 +210,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
         handleStatistics.call(this);
     },
 
-
+    //TODO handle darts remaining less than 3
     "BestOutIntent": function () {
         // console.log("DEBUG OUT_CHART: " + OUT_CHART.toString());
         var speechOutput = "";
@@ -221,13 +229,6 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
           this.emit(":ask", speechOutput, repromptSpeech);
         }
     },
-
-    "DartScoreIntent": function () {
-        var OUT_CHART =  outChart["OUT_CHART"];
-        var speechOutput = bestOutSpeech.call(this);
-        this.emit(":tell", speechOutput, speechOutput);
-    },
-
 
     "AMAZON.StartOverIntent": function () {
         this.handler.state = GAME_STATES.START;
@@ -349,6 +350,7 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
     }
 });
 
+//TODO handle dartScores with less than 3 darts remaining
 function bestOutSpeech() {
   var remaining = remainingValue.call(this);
   var speechOutput = this.t("BEST_OUT", remaining.toString());
@@ -411,41 +413,80 @@ function targetToSpeech(target) {
 function handleUserScore() {
     console.log("DEBUG: keys= " + Object.keys(this.attributes));
 
-    var scores = this.attributes['scores'];
     var speechOutput = "";
     var repromptSpeech = "";
-    var scoreSlotValid = isScoreSlotValid(this.event.request.intent);
-
-    if (scoreSlotValid) {
-      //slot values are strings so convert score value to a number and add to array
-      scores.push(parseInt(this.event.request.intent.slots.RoundScore.value));
-      var remaining = remainingValue.call(this);
-      if (remaining < 0 || remaining == 1) {
-        scores[scores.length-1] = 0; //convert bust score to zero
-        remaining = remainingValue.call(this); //re-calc remaining
-        speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
-      } else if (remaining == 0) { //the game has been won
-        this.handler.state = GAME_STATES.WON;
-        this.attributes['gamesPlayed'] += 1;
-        speechOutput = gameWonSpeech.call(this);
-      } else if (remaining <= BEST_OUT_LIMIT) {
-        var speeches = bestOutSpeech.call(this);
-        speechOutput = speeches.speechOutput;
-        repromptSpeech = speeches.repromptSpeech;
-
-      } else {
-        speechOutput = this.t("REMAINDER_MESSAGE", remaining.toString());
-      }
+    if (isScoreSlotValid(this.event.request.intent)) {
+      var scores = this.attributes['scores'];
+      scores.push(parseInt(this.event.request.intent.slots.RoundScore.value);
+      var speeches = scoreSpeech.call(this);
+      speechOutput = speeches.speechOutput;
+      repromptSpeech = speeches.repromptSpeech;
     } else {
-        speechOutput += this.t("BAD_SCORE");
+      speechOutput += this.t("BAD_SCORE");
     }
-    this.attributes['scores'] = scores;
     if (repromptSpeech == "") {
       this.emit(":tellWithCard", speechOutput, this.t("GAME_NAME"), speechOutput);
     } else {
       this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
     }
 }
+
+"handleUserDartScore": function () {
+  var speechOutput = "";
+  var repromptSpeech = "";
+  if (isDartScoreSlotValid(this.event.request.intent) {
+    var dartScores = this.attributes['dartScores'];
+    dartScores.push(parseInt(this.event.request.intent.slots.DartScore.value));
+    var speeches = scoreSpeech.call(this);
+    speechOutput = speeches.speechOutput;
+    repromptSpeech = speeches.repromptSpeech;
+  } else {
+    speechOutput = this.t("BAD_DART_SCORE_MESSAGE");
+  };
+  if (repromptSpeech == "") {
+    this.emit(":tellWithCard", speechOutput, this.t("GAME_NAME"), speechOutput);
+  } else {
+    this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+  }
+},
+
+
+// Handle new dart or round score
+function scoreSpeech() {
+  var scores = this.attributes['scores'];
+  var remaining = remainingValue.call(this);
+  if (remaining < 0 || remaining == 1) { //Bust
+    if (dartScores.length > 0) {
+      scores.push(0); //add a bust round score
+      this.attributes['dartScores'] = []; //remove all dart scores
+    } else {
+      scores[scores.length-1] = 0; //convert bust round score to zero
+    }
+    remaining = remainingValue.call(this); //re-calc remaining
+    speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
+  } else if (remaining == 0) { //the game has been won
+    if (dartScores.length > 0) {
+      var totalDartScore = dartScores.reduce(function(a, b) { return a + b; });
+      scores.push(totalDartScore); //add the darts to the round
+      this.attributes['dartScores'] = []; //remove all dart scores
+    }
+    this.handler.state = GAME_STATES.WON;
+    this.attributes['gamesPlayed'] += 1;
+    speechOutput = gameWonSpeech.call(this);
+  } else if (remaining <= BEST_OUT_LIMIT) {
+    var speeches = bestOutSpeech.call(this);
+    speechOutput = speeches.speechOutput;
+    repromptSpeech = speeches.repromptSpeech;
+  } else {
+    speechOutput = this.t("REMAINDER_MESSAGE", remaining.toString());
+  }
+  this.attributes['scores'] = scores;
+  return {
+    speechOutput: speechOutput,
+    repromptSpeech: repromptSpeech
+  };
+}
+
 
 function gameWonSpeech() {
   var stats = statistics.call(this);
@@ -504,6 +545,12 @@ function isScoreSlotValid(intent) {
     var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.RoundScore.value));
     return answerSlotIsInt && parseInt(intent.slots.RoundScore.value) <= 180 && parseInt(intent.slots.RoundScore.value) >= 0;
 }
+//make sure the dart score is a number from 0 to 60
+function isDartScoreSlotValid(intent) {
+    var answerSlotFilled = intent && intent.slots && intent.slots.DartScore && intent.slots.DartScore.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.DartScore.value));
+    return answerSlotIsInt && parseInt(intent.slots.DartScore.value) <= 60 && parseInt(intent.slots.DartScore.value) >= 0;
+}
 
 //make sure the start score is a number between 101 and 1001
 function isStartScoreSlotValid(intent) {
@@ -512,7 +559,7 @@ function isStartScoreSlotValid(intent) {
     return answerSlotIsInt && parseInt(intent.slots.StartScore.value) <= 1001 && parseInt(intent.slots.StartScore.value) >= 101;
 }
 
-//Calculate the sum of all scores and subtract from the game total
+//Calculate the sum of all scores and dart scores and subtract from the game total
 function remainingValue() {
   var scores = this.attributes['scores'];
   var totalScore = 0;
@@ -520,7 +567,10 @@ function remainingValue() {
   if (scores.length > 0) {
     totalScore = scores.reduce(function(a, b) { return a + b; });
   }
-  console.log("DEBUG: scores= " + scores.toString() + " startScore= " + this.attributes['startScore'].toString());
+  if (dartScores.length > 0) {
+    totalScore += dartScores.reduce(function(a, b) { return a + b; });
+  }
+  console.log("DEBUG: scores= " + scores.toString() + "dartScores= " + dartScores.toString() + " startScore= " + this.attributes['startScore'].toString());
   return this.attributes['startScore'] - totalScore;
 }
 
