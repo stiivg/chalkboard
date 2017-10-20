@@ -113,7 +113,7 @@ var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
 
 var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     "LaunchRequest": function () {
-      //initialize the attributes if this is the first time
+      //initialize the attributes if this is the first time the DB is created
       if(Object.keys(this.attributes).length === 0) {
           this.attributes['scores'] = new Array();
           this.attributes['startScore'] = 301;
