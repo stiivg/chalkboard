@@ -51,6 +51,7 @@ var languageString = {
             "WIN_TARGET": "You need double %s for the win",
             "BUST_MESSAGE": "Bust, you still have %s remaining",
             "NO_BUST_MESSAGE": "You cannot bust with %s remaining",
+            "NO_WIN_MESSAGE": "You cannot win with %s remaining",
             "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per dart",
             "WON_UNHANDLED": "This game is over"
         }
@@ -177,6 +178,22 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
         speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
+      }
+      this.emit(":tell", speechOutput);
+    },
+
+    "WonIntent": function () {
+      var speechOutput = "";
+      var scores = this.attributes['scores'];
+      var remaining = remainingValue.call(this);
+      if (remaining <= 170) { //ensure win is possible
+        scores.push(remaining); //must have scored remainder
+        this.attributes['scores']= scores;
+        this.handler.state = GAME_STATES.WON;
+        this.attributes['gamesPlayed'] += 1;
+        speechOutput = gameWonSpeech.call(this);
+      } else {
+        speechOutput = this.t("NO_WIN_MESSAGE", remaining.toString());
       }
       this.emit(":tell", speechOutput);
     },
@@ -410,8 +427,7 @@ function handleUserScore() {
       } else if (remaining == 0) { //the game has been won
         this.handler.state = GAME_STATES.WON;
         this.attributes['gamesPlayed'] += 1;
-        var stats = statistics.call(this);
-        speechOutput = this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppdScore.toString());
+        speechOutput = gameWonSpeech.call(this);
       } else if (remaining <= BEST_OUT_LIMIT) {
         var speeches = bestOutSpeech.call(this);
         speechOutput = speeches.speechOutput;
@@ -429,6 +445,11 @@ function handleUserScore() {
     } else {
       this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
     }
+}
+
+function gameWonSpeech() {
+  var stats = statistics.call(this);
+  return this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppdScore.toString());
 }
 
 function remainderSpeech() {
