@@ -257,7 +257,6 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in score state: " + this.event.request.reason);
-        this.attributes['scores'] = scores;
         this.emit(':tell', "Goodbye!");
 }
 });
@@ -450,11 +449,8 @@ function handleUserDartScore() {
   } else {
     speechOutput = this.t("BAD_DART_SCORE_MESSAGE");
   };
-  if (repromptSpeech == "") {
-    this.emit(":tellWithCard", speechOutput, this.t("GAME_NAME"), speechOutput);
-  } else {
-    this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
-  }
+  //always ask with dart score to be ready for next dart
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
 }
 
 function addDartScore() {
