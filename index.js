@@ -459,7 +459,7 @@ function handleUserDartScore() {
 
 function addDartScore() {
   var dartScores = this.attributes['dartScores'];
-  var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+  var newDartScore = dartIntentToScore.call(this);
   if (dartScores.length == 2) { //on third dart create round score
     var totalScore = dartScores[0] + dartScores[1] + newDartScore;
     this.attributes['scores'].push(totalScore);
@@ -468,7 +468,20 @@ function addDartScore() {
     dartScores.push(newDartScore);
   }
 }
-
+//convert multipliers to value such as 'double ten' = 20
+function dartIntentToScore() {
+  var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+  if (isDartMultiplierSlotValid(this.event.request.intent)) {
+    var multiplier = this.event.request.intent.slots.Multiplier.value;
+    console.log("DEBUG: multiplier= " +multiplier);
+    if (multiplier == "double") {
+      newDartScore = newDartScore + newDartScore;
+    } else if (multiplier == "triple") {
+      newDartScore = newDartScore + newDartScore + newDartScore;
+    }
+  }
+  return newDartScore;
+}
 
 // Handle new dart or round score
 function scoreSpeech() {
@@ -566,7 +579,7 @@ function handleStatistics() {
 }
 //test if the round score is at least the round darts so far
 function isScoreAboveDarts(score) {
-  var dartsTotal;
+  var dartsTotal = 0;
   var dartScores = this.attributes['dartScores'];
   if (dartScores.length > 0) {
     dartsTotal = dartScores.reduce(function(a, b) { return a + b; });
@@ -585,6 +598,12 @@ function isDartScoreSlotValid(intent) {
     var answerSlotFilled = intent && intent.slots && intent.slots.DartScore && intent.slots.DartScore.value;
     var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.DartScore.value));
     return answerSlotIsInt && parseInt(intent.slots.DartScore.value) <= 60 && parseInt(intent.slots.DartScore.value) >= 0;
+}
+
+//check if dart multiplier is double or triple
+function isDartMultiplierSlotValid(intent) {
+    var answerSlotFilled = intent && intent.slots && intent.slots.Multiplier && intent.slots.Multiplier.value;
+    return answerSlotFilled && (intent.slots.Multiplier.value == "double" || intent.slots.Multiplier.value == "triple")
 }
 
 //make sure the start score is a number between 101 and 1001
