@@ -1,0 +1,74 @@
+{
+  "intents": [
+    {
+      "intent": "AMAZON.CancelIntent"
+    },
+    {
+      "intent": "AMAZON.HelpIntent"
+    },
+    {
+      "intent": "AMAZON.RepeatIntent"
+    },
+    {
+      "intent": "AMAZON.StartOverIntent"
+    },
+    {
+      "intent": "AMAZON.StopIntent"
+    },
+    {
+      "intent": "BestOutIntent"
+    },
+    {
+      "intent": "BustIntent"
+    },
+    {
+      "slots": [
+        {
+          "name": "Multiplier",
+          "type": "LIST_OF_MULTIPLES"
+        },
+        {
+          "name": "DartScore",
+          "type": "AMAZON.NUMBER"
+        }
+      ],
+      "intent": "DartScoreIntent"
+    },
+    {
+      "intent": "LastScoreIntent"
+    },
+    {
+      "intent": "RemainderIntent"
+    },
+    {
+      "intent": "RemoveLastScoreIntent"
+    },
+    {
+      "slots": [
+        {
+          "name": "RoundScore",
+          "type": "AMAZON.NUMBER"
+        }
+      ],
+      "intent": "ScoreIntent"
+    },
+    {
+      "slots": [
+        {
+          "name": "StartScore",
+          "type": "AMAZON.NUMBER"
+        }
+      ],
+      "intent": "SetStartScoreIntent"
+    },
+    {
+      "intent": "StatisticsIntent"
+    },
+    {
+      "intent": "WonIntent"
+    },
+    {
+      "intent": "MissedIntent"
+    }
+  ]
+}
