@@ -40,7 +40,7 @@ var languageString = {
             "GAME_OVER_MESSAGE": "Thank you for playing!",
             "SCORE_IS_MESSAGE": "Your score is %s. ",
             "BAD_SCORE": "I did not understand your score",
-            "BAD_DART_SCORE": "I did not understand your dart score",
+            "BAD_DART_SCORE_MESSAGE": "I did not understand your dart score",
             "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per dart of %s",
             "SINGLE_STATISTICS_MESSAGE": "After your first round you scored %s and have %s remaining.",
             "NO_OUT": "No three dart out",
@@ -417,7 +417,7 @@ function handleUserScore() {
     var repromptSpeech = "";
     if (isScoreSlotValid(this.event.request.intent)) {
       var scores = this.attributes['scores'];
-      scores.push(parseInt(this.event.request.intent.slots.RoundScore.value);
+      scores.push(parseInt(this.event.request.intent.slots.RoundScore.value));
       var speeches = scoreSpeech.call(this);
       speechOutput = speeches.speechOutput;
       repromptSpeech = speeches.repromptSpeech;
@@ -431,12 +431,11 @@ function handleUserScore() {
     }
 }
 
-"handleUserDartScore": function () {
+function handleUserDartScore() {
   var speechOutput = "";
   var repromptSpeech = "";
-  if (isDartScoreSlotValid(this.event.request.intent) {
-    var dartScores = this.attributes['dartScores'];
-    dartScores.push(parseInt(this.event.request.intent.slots.DartScore.value));
+  if (isDartScoreSlotValid(this.event.request.intent)) {
+    addDartScore.call(this);
     var speeches = scoreSpeech.call(this);
     speechOutput = speeches.speechOutput;
     repromptSpeech = speeches.repromptSpeech;
@@ -448,12 +447,27 @@ function handleUserScore() {
   } else {
     this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
   }
-},
+}
+
+function addDartScore() {
+  var dartScores = this.attributes['dartScores'];
+  var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+  if (dartScores.length == 2) { //on third dart create round score
+    var totalScore = dartScores[0] + dartScores[1] + newDartScore;
+    this.attributes['scores'].push(totalScore);
+    this.attributes['dartScores'] = [];
+  } else {
+    dartScores.push(newDartScore);
+  }
+}
 
 
 // Handle new dart or round score
 function scoreSpeech() {
+  var speechOutput = "";
+  var repromptSpeech = "";
   var scores = this.attributes['scores'];
+  var dartScores = this.attributes['dartScores'];
   var remaining = remainingValue.call(this);
   if (remaining < 0 || remaining == 1) { //Bust
     if (dartScores.length > 0) {
@@ -562,6 +576,7 @@ function isStartScoreSlotValid(intent) {
 //Calculate the sum of all scores and dart scores and subtract from the game total
 function remainingValue() {
   var scores = this.attributes['scores'];
+  var dartScores = this.attributes['dartScores'];
   var totalScore = 0;
 
   if (scores.length > 0) {
