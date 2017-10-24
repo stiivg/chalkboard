@@ -163,12 +163,15 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       };
     },
 
-    //TODO remove last dart score
+    //removes the last dart score or round score
     "RemoveLastScoreIntent": function () {
+      var dartScores = this.attributes['dartScores'];
       var scores = this.attributes['scores'];
-      if (scores.length > 0) {
+      if (dartScores.length > 0) {
+        dartScores.pop();
+        this.emitWithState("RemainderIntent");
+      } else if (scores.length > 0) {
         scores.pop();
-        this.attributes['scores'] = scores;
         this.emitWithState("RemainderIntent");
       } else {
         var speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
@@ -217,7 +220,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       } else {
         speechOutput = this.t("NO_WIN_MESSAGE", remaining.toString());
       }
-      this.emit(":tell", speechOutput);
+      this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
     },
 
     "StatisticsIntent": function () {
@@ -282,6 +285,12 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
 
     "StatisticsIntent": function () {
         handleStatistics.call(this);
+    },
+
+    "RemoveLastScoreIntent": function () {
+      this.attributes['gamesPlayed'] -= 1;
+      this.handler.state = GAME_STATES.SCORE;
+      this.emitWithState("RemoveLastScoreIntent");
     },
 
     "AMAZON.StartOverIntent": function () {
