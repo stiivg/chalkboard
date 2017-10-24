@@ -9,6 +9,10 @@ BestOutIntent best out
 BestOutIntent outshot
 BustIntent I am bust
 BustIntent bust
+DartBullIntent i hit the {Bull}
+DartBullIntent i hit the {Multiplier} {Bull}
+DartBullIntent i got a {Bull}
+DartBullIntent i got a {Multiplier} {Bull}
 DartScoreIntent I hit {DartScore}
 DartScoreIntent My Dart hit {DartScore}
 DartScoreIntent That dart was {DartScore}
