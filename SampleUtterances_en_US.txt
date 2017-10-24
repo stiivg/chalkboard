@@ -9,11 +9,13 @@ BestOutIntent best out
 BestOutIntent outshot
 BustIntent I am bust
 BustIntent bust
+DartScoreIntent I hit {DartScore}
 DartScoreIntent My Dart hit {DartScore}
 DartScoreIntent That dart was {DartScore}
 DartScoreIntent first dart {DartScore}
 DartScoreIntent second dart {DartScore}
 DartScoreIntent third dart {DartScore}
+DartScoreIntent I hit {Multiplier} {DartScore}
 DartScoreIntent My Dart hit {Multiplier} {DartScore}
 DartScoreIntent That dart was {Multiplier} {DartScore}
 DartScoreIntent first dart {Multiplier} {DartScore}
