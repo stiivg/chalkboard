@@ -36,6 +36,7 @@ var languageString = {
             "BAD_START_SCORE_MESSAGE": "I did not understand your start score",
             "START_SCORE_RANGE_MESSAGE": "The start score must be between <say-as interpret-as=\"spell-out\">101</say-as> and 1000 and 1",
             "LAST_SCORE_MESSAGE": "Your last score was %s",
+            "LAST_DART_SCORE_MESSAGE": "Your last dart score was %s",
             "NO_LAST_SCORE_MESSAGE": "You have not scored yet",
             "GAME_OVER_MESSAGE": "Thank you for playing!",
             "SCORE_IS_MESSAGE": "Your score is %s. ",
@@ -119,26 +120,26 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     "LaunchRequest": function () {
       //initialize the attributes if this is the first time the DB is created
       if(Object.keys(this.attributes).length === 0) {
-          this.attributes['scores'] = new Array();
-          this.attributes['startScore'] = 301;
-          this.attributes['gamesPlayed'] = 0;
-          this.attributes['dartScores'] = new Array();
+        this.attributes['scores'] = new Array();
+        this.attributes['startScore'] = 301;
+        this.attributes['gamesPlayed'] = 0;
+        this.attributes['dartScores'] = new Array();
       }
 
       var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
-        this.emit(":ask", speechOutput, speechOutput);
+      this.emit(":ask", speechOutput, speechOutput);
     },
     "ScoreIntent": function () {
-        handleUserScore.call(this);
+      handleUserScore.call(this);
     },
 
     "DartScoreIntent": function () {
-        handleUserDartScore.call(this);
+      handleUserDartScore.call(this);
     },
 
     "RemainderIntent": function () {
       var speechOutput = remainderSpeech.call(this);
-      this.emit(":tell", speechOutput);
+      this.emit(":ask", speechOutput);
     },
 
 
@@ -199,7 +200,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       var repromptSpeech = "";
       var dartScores = this.attributes['dartScores'];
       addDartScore.call(this, 0);
-      var speeches = scoreSpeech.call(this);
+      var speeches = scoreSpeech.call(this, true);
       speechOutput = speeches.speechOutput;
       repromptSpeech = speeches.repromptSpeech;
       //always ask with dart score to be ready for next dart
@@ -443,7 +444,7 @@ function handleUserScore() {
       if (isScoreAboveDarts.call(this, newScore)) {
         scores.push(newScore);
         this.attributes['dartScores'] = []; //remove all dart scores
-        var speeches = scoreSpeech.call(this);
+        var speeches = scoreSpeech.call(this, true); //assume last dart was a double
         speechOutput = speeches.speechOutput;
         repromptSpeech = speeches.repromptSpeech;
       } else {
@@ -460,9 +461,9 @@ function handleUserDartScore() {
   var speechOutput = "";
   var repromptSpeech = "";
   if (isDartScoreSlotValid(this.event.request.intent)) {
-    var newDartScore = dartIntentToScore.call(this);
-    addDartScore.call(this, newDartScore);
-    var speeches = scoreSpeech.call(this);
+    var dartTarget = dartIntentToScore.call(this);
+    addDartScore.call(this, dartTarget.newDartScore);
+    var speeches = scoreSpeech.call(this, dartTarget.isDouble);
     speechOutput = speeches.speechOutput;
     repromptSpeech = speeches.repromptSpeech;
   } else {
@@ -472,6 +473,7 @@ function handleUserDartScore() {
   this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
 }
 
+//if third dart create round score
 function addDartScore(newDartScore) {
   var dartScores = this.attributes['dartScores'];
   if (dartScores.length == 2) { //on third dart create round score
@@ -485,26 +487,31 @@ function addDartScore(newDartScore) {
 //convert multipliers to value such as 'double ten' = 20
 function dartIntentToScore() {
   var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+  var isDouble = false;
   if (isDartMultiplierSlotValid(this.event.request.intent)) {
     var multiplier = this.event.request.intent.slots.Multiplier.value;
     console.log("DEBUG: multiplier= " +multiplier);
     if (multiplier == "double") {
       newDartScore = newDartScore + newDartScore;
+      isDouble = true;
     } else if (multiplier == "triple") {
       newDartScore = newDartScore + newDartScore + newDartScore;
     }
   }
-  return newDartScore;
+  return {
+    newDartScore: newDartScore,
+    isDouble: isDouble
+  };
 }
 
 // Handle new dart or round score
-function scoreSpeech() {
+function scoreSpeech(isDouble) {
   var speechOutput = "";
   var repromptSpeech = "";
   var scores = this.attributes['scores'];
   var dartScores = this.attributes['dartScores'];
   var remaining = remainingValue.call(this);
-  if (remaining < 0 || remaining == 1) { //Bust
+  if (remaining < 0 || remaining == 1 || (remaining == 0 && isDouble == false)) { //Bust
     if (dartScores.length > 0) {
       scores.push(0); //add a bust round score
       this.attributes['dartScores'] = []; //remove all dart scores
@@ -513,7 +520,7 @@ function scoreSpeech() {
     }
     remaining = remainingValue.call(this); //re-calc remaining
     speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
-  } else if (remaining == 0) { //the game has been won
+  } else if (remaining == 0) { //the game has been won if a double
     if (dartScores.length > 0) {
       var totalDartScore = dartScores.reduce(function(a, b) { return a + b; });
       scores.push(totalDartScore); //add the darts to the round
@@ -563,10 +570,15 @@ function remainingToDouble(remaining) {
 }
 
 function lastScoreSpeech() {
+  var dartScores = this.attributes['dartScores'];
   var scores = this.attributes['scores'];
   var speechOutput = "";
-  if (scores.length > 0) {
+  if (scores.length > 0 || dartScores.length > 0) {
+    if (dartScores.length > 0) {
+      speechOutput = this.t("LAST_DART_SCORE_MESSAGE", dartScores[dartScores.length-1].toString());
+    } else {
       speechOutput = this.t("LAST_SCORE_MESSAGE", scores[scores.length-1].toString());
+    }
   } else {
       speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
   }
