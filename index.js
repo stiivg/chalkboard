@@ -137,6 +137,10 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       handleUserDartScore.call(this);
     },
 
+    "DartBullIntent": function () {
+      handleUserBull.call(this);
+    },
+
     "RemainderIntent": function () {
       var speechOutput = remainderSpeech.call(this);
       this.emit(":ask", speechOutput);
@@ -457,11 +461,25 @@ function handleUserScore() {
 
 }
 
+function handleUserBull() {
+  var speechOutput = "";
+  var repromptSpeech = "";
+  var newDartScore = 25; //bull score
+  var dartTarget = dartIntentToScore.call(this, newDartScore);
+  addDartScore.call(this, dartTarget.newDartScore);
+  var speeches = scoreSpeech.call(this, dartTarget.isDouble);
+  speechOutput = speeches.speechOutput;
+  repromptSpeech = speeches.repromptSpeech;
+  //always ask with dart score to be ready for next dart
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+}
+
 function handleUserDartScore() {
   var speechOutput = "";
   var repromptSpeech = "";
   if (isDartScoreSlotValid(this.event.request.intent)) {
-    var dartTarget = dartIntentToScore.call(this);
+    var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+    var dartTarget = dartIntentToScore.call(this, newDartScore);
     addDartScore.call(this, dartTarget.newDartScore);
     var speeches = scoreSpeech.call(this, dartTarget.isDouble);
     speechOutput = speeches.speechOutput;
@@ -485,12 +503,10 @@ function addDartScore(newDartScore) {
   }
 }
 //convert multipliers to value such as 'double ten' = 20
-function dartIntentToScore() {
-  var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+function dartIntentToScore(newDartScore) {
   var isDouble = false;
   if (isDartMultiplierSlotValid(this.event.request.intent)) {
     var multiplier = this.event.request.intent.slots.Multiplier.value;
-    console.log("DEBUG: multiplier= " +multiplier);
     if (multiplier == "double") {
       newDartScore = newDartScore + newDartScore;
       isDouble = true;
