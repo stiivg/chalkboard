@@ -190,6 +190,18 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       }
       this.emit(":tell", speechOutput);
     },
+//this means a dart missed the board and scored zero
+    "MissedIntent": function () {
+      var speechOutput = "";
+      var repromptSpeech = "";
+      var dartScores = this.attributes['dartScores'];
+      addDartScore.call(this, 0);
+      var speeches = scoreSpeech.call(this);
+      speechOutput = speeches.speechOutput;
+      repromptSpeech = speeches.repromptSpeech;
+      //always ask with dart score to be ready for next dart
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+    },
 
     "WonIntent": function () {
       var speechOutput = "";
@@ -431,18 +443,16 @@ function handleUserScore() {
     } else {
       speechOutput = this.t("BAD_SCORE");
     }
-    if (repromptSpeech == "") {
-      this.emit(":tellWithCard", speechOutput, this.t("GAME_NAME"), speechOutput);
-    } else {
-      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
-    }
+    this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+
 }
 
 function handleUserDartScore() {
   var speechOutput = "";
   var repromptSpeech = "";
   if (isDartScoreSlotValid(this.event.request.intent)) {
-    addDartScore.call(this);
+    var newDartScore = dartIntentToScore.call(this);
+    addDartScore.call(this, newDartScore);
     var speeches = scoreSpeech.call(this);
     speechOutput = speeches.speechOutput;
     repromptSpeech = speeches.repromptSpeech;
@@ -453,9 +463,8 @@ function handleUserDartScore() {
   this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
 }
 
-function addDartScore() {
+function addDartScore(newDartScore) {
   var dartScores = this.attributes['dartScores'];
-  var newDartScore = dartIntentToScore.call(this);
   if (dartScores.length == 2) { //on third dart create round score
     var totalScore = dartScores[0] + dartScores[1] + newDartScore;
     this.attributes['scores'].push(totalScore);
