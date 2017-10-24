@@ -192,7 +192,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
       }
-      this.emit(":tell", speechOutput);
+      this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
     },
 //this means a dart missed the board and scored zero
     "MissedIntent": function () {
@@ -559,7 +559,7 @@ function remainingToDouble(remaining) {
   var speechOutput = "";
   if (isEven(remaining) && remaining <= 40) {
     var doubleRemStr = (remaining/2).toString();
-    speechOutput = this.t("DOUBLE_WORD") + doubleRemStr;
+    speechOutput = this.t("DOUBLE_WORD") + " " + doubleRemStr;
   } else {
     speechOutput = remaining.toString();
   }
