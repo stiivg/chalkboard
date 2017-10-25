@@ -43,8 +43,8 @@ var languageString = {
             "BAD_SCORE": "I did not understand your score",
             "SCORE_TOO_LOW_MESSAGE": "This score is less than the darts this round",
             "BAD_DART_SCORE_MESSAGE": "I did not understand your dart score",
-            "WON_STATISTICS_MESSAGE": "You won in %s rounds, your highest score was %s, your lowest %s, with a points per dart of %s",
-            "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per dart of %s",
+            "WON_STATISTICS_MESSAGE": "You won in %s rounds, your highest score was %s, your lowest %s, with a points per round of %s",
+            "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per round of %s",
             "SINGLE_STATISTICS_MESSAGE": "After your first round you scored %s and have %s remaining.",
             "NO_OUT": "No three dart out",
             "BEST_OUT": "With %s remaining, the best out is ",
@@ -56,7 +56,7 @@ var languageString = {
             "BUST_MESSAGE": "Bust, you still have %s remaining",
             "NO_BUST_MESSAGE": "You cannot bust with %s remaining",
             "NO_WIN_MESSAGE": "You cannot win with %s remaining",
-            "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per dart",
+            "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per round",
             "WON_UNHANDLED": "This game is over"
         }
     }
@@ -562,7 +562,7 @@ function scoreSpeech(isDouble) {
 
 function gameWonSpeech() {
   var stats = statistics.call(this);
-  return this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppdScore.toString());
+  return this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppRound.toString());
 }
 
 function remainderSpeech() {
@@ -613,9 +613,9 @@ function handleStatistics() {
     } else if (scores.length == 1) {
       speechOutput = this.t("SINGLE_STATISTICS_MESSAGE", scores[scores.length-1].toString(),stats.remaining.toString());
     } else if (remaining == 0) {
-      speechOutput = this.t("WON_STATISTICS_MESSAGE", stats.numRounds.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppdScore.toString());
+      speechOutput = this.t("WON_STATISTICS_MESSAGE", stats.numRounds.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
     } else {
-      speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppdScore.toString());
+      speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
     }
     this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
 }
@@ -686,6 +686,7 @@ function statistics() {
     numRounds: numRounds,
     totalScore: totalScore,
     remaining: this.attributes['startScore'] - totalScore,
+    ppRound: avgScore,
     ppdScore: Math.round(avgScore/3), // Points Per Dart
     minScore: minScore,
     maxScore: maxScore
