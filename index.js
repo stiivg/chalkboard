@@ -9,6 +9,7 @@ var GAME_STATES = {
 };
 // var scores = new Array();
 var BEST_OUT_LIMIT = 170; //Highest remainder with out in round option
+var AUTO_OUT_LIMIT = 100; //Highest remainder for automatic out option
 var outChart = require("./outChart");
 var OUT_CHART =  outChart["OUT_CHART"];
 
@@ -377,7 +378,6 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
     }
 });
 
-//TODO handle dartScores with less than 3 darts remaining
 function bestOutSpeech() {
   var remaining = remainingValue.call(this);
   var speechOutput = this.t("BEST_OUT", remaining.toString());
@@ -545,7 +545,7 @@ function scoreSpeech(isDouble) {
     this.handler.state = GAME_STATES.WON;
     this.attributes['gamesPlayed'] += 1;
     speechOutput = gameWonSpeech.call(this);
-  } else if (remaining <= BEST_OUT_LIMIT) {
+  } else if (remaining <= AUTO_OUT_LIMIT) {
     var speeches = bestOutSpeech.call(this);
     speechOutput = speeches.speechOutput;
     repromptSpeech = speeches.repromptSpeech;
