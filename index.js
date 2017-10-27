@@ -20,15 +20,14 @@ var OUT_CHART =  outChart["OUT_CHART"];
 var languageString = {
     "en-US": {
         "translation": {
-//          "GAME_NAME" : "Darts <say-as interpret-as="spell-out">501</say-as>", // Fails - needs exscape codes
             "GAME_NAME" : "Chalkboard",
             "ASK_MESSAGE_START": "Would you like to start playing?",
             "STOP_MESSAGE": "Would you like to keep playing?",
             "CANCEL_MESSAGE": "Ok, let\'s play again soon.",
-            "NO_MESSAGE": "Ok, we\'ll play another time. Goodbye!",
-            "HELP_UNHANDLED": "Say yes to continue, or no to end the game.",
+            "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
+            "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
             "START_UNHANDLED": "Say start to start a new game.",
-            "SCORE_UNHANDLED": "Try saying I scored 180",
+            "SCORE_UNHANDLED": "Try saying I scored 180,or remove last score",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "WELCOME_TEXT": "I will keep score for your game of %s.",
@@ -105,7 +104,7 @@ var newSessionHandlers = {
 var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
     "StartGame": function () {
         var speechOutput = this.t("NEW_GAME_MESSAGE", this.t("GAME_NAME")) + this.t("WELCOME_MESSAGE", this.attributes['startScore'].toString());
-        var repromptText = speechOutput;
+        var repromptText = this.t("HELP_MESSAGE");
 
         this.attributes['scores'] = []; //remove all scores
         this.attributes['dartScores'] = [];
@@ -262,7 +261,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "AMAZON.HelpIntent": function () {
         this.handler.state = GAME_STATES.HELP;
-        this.emitWithState("helpTheUser", false);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.StopIntent": function () {
         this.handler.state = GAME_STATES.HELP;
@@ -278,7 +277,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in score state: " + this.event.request.reason);
-        this.emit(':tell', "Goodbye!");
+        this.emit(':saveState', true);
 }
 });
 
@@ -308,7 +307,7 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
     },
     "AMAZON.HelpIntent": function () {
         this.handler.state = GAME_STATES.HELP;
-        this.emitWithState("helpTheUser", false);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.StopIntent": function () {
         this.handler.state = GAME_STATES.HELP;
@@ -327,14 +326,15 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
 
     "SessionEndedRequest": function () {
         console.log("Session ended in won state: " + this.event.request.reason);
+        this.emit(':saveState', true);
     }
 });
 
 var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
-    "helpTheUser": function (newGame) {
-        var askMessage = newGame ? this.t("ASK_MESSAGE_START") : this.t("REPEAT_QUESTION_MESSAGE") + this.t("STOP_MESSAGE");
-        var speechOutput = this.t("HELP_MESSAGE", GAME_LENGTH) + askMessage;
-        var repromptText = this.t("HELP_REPROMPT") + askMessage;
+    "helpTheUser": function () {
+        var speechOutput = this.t("HELP_MESSAGE");
+        var repromptText = this.t("HELP_REPROMPT");
+        this.handler.state = GAME_STATES.SCORE;
         this.emit(":ask", speechOutput, repromptText);
     },
     "AMAZON.StartOverIntent": function () {
@@ -342,25 +342,10 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
         this.emitWithState("StartGame");
     },
     "AMAZON.RepeatIntent": function () {
-        var newGame = (this.attributes["speechOutput"] && this.attributes["repromptText"]) ? false : true;
-        this.emitWithState("helpTheUser", newGame);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.HelpIntent": function() {
-        var newGame = (this.attributes["speechOutput"] && this.attributes["repromptText"]) ? false : true;
-        this.emitWithState("helpTheUser", newGame);
-    },
-    "AMAZON.YesIntent": function() {
-        if (this.attributes["speechOutput"] && this.attributes["repromptText"]) {
-            this.handler.state = GAME_STATES.SCORE;
-            this.emitWithState("AMAZON.RepeatIntent");
-        } else {
-            this.handler.state = GAME_STATES.START;
-            this.emitWithState("StartGame");
-        }
-    },
-    "AMAZON.NoIntent": function() {
-        var speechOutput = this.t("NO_MESSAGE");
-        this.emit(":tell", speechOutput);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.StopIntent": function () {
         var speechOutput = this.t("STOP_MESSAGE");
@@ -370,11 +355,11 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
         this.emit(":tell", this.t("CANCEL_MESSAGE"));
     },
     "Unhandled": function () {
-        var speechOutput = this.t("HELP_UNHANDLED");
-        this.emit(":ask", speechOutput, speechOutput);
+      this.emitWithState("helpTheUser");
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in help state: " + this.event.request.reason);
+        this.emit(':saveState', true);
     }
 });
 
@@ -486,6 +471,7 @@ function handleUserDartScore() {
     repromptSpeech = speeches.repromptSpeech;
   } else {
     speechOutput = this.t("BAD_DART_SCORE_MESSAGE");
+    repromptSpeech = this.t("HELP_MESSAGE");
   };
   //always ask with dart score to be ready for next dart
   this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
@@ -686,7 +672,7 @@ function statistics() {
     numRounds: numRounds,
     totalScore: totalScore,
     remaining: this.attributes['startScore'] - totalScore,
-    ppRound: avgScore,
+    ppRound: Math.round(avgScore),
     ppdScore: Math.round(avgScore/3), // Points Per Dart
     minScore: minScore,
     maxScore: maxScore
