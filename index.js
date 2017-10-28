@@ -127,7 +127,8 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       }
 
       var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
-      this.emit(":ask", speechOutput, speechOutput);
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
+      this.emit(":ask", speechOutput, repromptSpeech);
     },
     "ScoreIntent": function () {
       handleUserScore.call(this);
@@ -186,6 +187,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 
     "BustIntent": function () {
       var speechOutput = "";
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
       if (remaining <= 180) { //ensure bust is possible
@@ -196,7 +198,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
       }
-      this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
     },
 //this means a dart missed the board and scored zero
     "MissedIntent": function () {
@@ -213,6 +215,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 
     "WonIntent": function () {
       var speechOutput = "";
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
       if (remaining <= 170) { //ensure win is possible
@@ -222,10 +225,11 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
         this.handler.state = GAME_STATES.WON;
         this.attributes['gamesPlayed'] += 1;
         speechOutput = gameWonSpeech.call(this);
+        repromptSpeech = this.t("HELP_REPROMPT");
       } else {
         speechOutput = this.t("NO_WIN_MESSAGE", remaining.toString());
       }
-      this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
     },
 
     "StatisticsIntent": function () {
@@ -242,15 +246,12 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
           var speeches = bestOutSpeech.call(this);
           speechOutput = speeches.speechOutput;
           repromptSpeech = speeches.repromptSpeech;
-        } else {
+        } else { //TODO handle this case in bestOutSpeech
           speechOutput = this.t("NO_BEST_OUT",remaining.toString())
+          repromptSpeech = this.t("SCORE_UNHANDLED")
         }
-        if (repromptSpeech == "") {
-          this.emit(":tell", speechOutput);
-        } else {
-          this.emit(":ask", speechOutput, repromptSpeech);
-        }
-    },
+        this.emit(":ask", speechOutput, repromptSpeech);
+      },
 
     "AMAZON.StartOverIntent": function () {
         this.handler.state = GAME_STATES.START;
@@ -285,7 +286,8 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
     "LastScoreIntent": function () {
       var speechOutput = lastScoreSpeech.call(this);
-      this.emit(":ask", speechOutput, speechOutput);
+      var repromptSpeech = this.t("HELP_REPROMPT");
+      this.emit(":ask", speechOutput, repromptSpeech);
     },
 
     "StatisticsIntent": function () {
@@ -321,7 +323,8 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
 
     "Unhandled": function () {
         var speechOutput = this.t("WON_UNHANDLED");
-        this.emit(":ask", speechOutput, "");
+        var repromptSpeech = this.t("HELP_REPROMPT");
+        this.emit(":ask", speechOutput, repromptSpeech);
     },
 
     "SessionEndedRequest": function () {
@@ -397,6 +400,7 @@ function bestOutSpeech() {
     // console.log("DEBUG: OUT_CHART =" + OUT_CHART.toString());
     if (bestOutTargets.length == 0) { //test for none entry in out chart
       speechOutput = this.t("NO_BEST_OUT",remaining.toString())
+      repromptSpeech = this.t("SCORE_UNHANDLED")
     } else {
       for (var i = 0; i < bestOutTargets.length; i++) {
         repromptSpeech += targetToSpeech.call(this, bestOutTargets[i]);
@@ -523,7 +527,7 @@ function dartIntentToScore(newDartScore) {
 // Handle new dart or round score
 function scoreSpeech(isDouble) {
   var speechOutput = "";
-  var repromptSpeech = "";
+  var repromptSpeech = "SCORE_UNHANDLED";
   var scores = this.attributes['scores'];
   var dartScores = this.attributes['dartScores'];
   var remaining = remainingValue.call(this);
