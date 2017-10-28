@@ -20,9 +20,9 @@ var OUT_CHART =  outChart["OUT_CHART"];
 var languageString = {
     "en-US": {
         "translation": {
-            "GAME_NAME" : "Chalkboard",
-            "ASK_MESSAGE_START": "Would you like to start playing?",
+            "GAME_NAME" : "Bull\'s-Eye",
             "STOP_MESSAGE": "Would you like to keep playing?",
+            "NO_MESSAGE": "Ok, I\'ve saved your score for later. Goodbye!",
             "CANCEL_MESSAGE": "Ok, let\'s play again soon.",
             "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
             "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
@@ -350,6 +350,20 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
     "AMAZON.StopIntent": function () {
         var speechOutput = this.t("STOP_MESSAGE");
         this.emit(":ask", speechOutput, speechOutput);
+    },
+    "AMAZON.YesIntent": function() {
+        var remaining = remainingValue.call(this);
+        if (remaining == 0) { //game already won
+          this.handler.state = GAME_STATES.WON;
+          this.emitWithState("StatisticsIntent");
+        } else {
+          this.handler.state = GAME_STATES.SCORE;
+          this.emitWithState("LaunchRequest");
+        }
+    },
+    "AMAZON.NoIntent": function() {
+        var speechOutput = this.t("NO_MESSAGE");
+        this.emit(":tell", speechOutput);
     },
     "AMAZON.CancelIntent": function () {
         this.emit(":tell", this.t("CANCEL_MESSAGE"));
