@@ -27,7 +27,7 @@ var languageString = {
             "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
             "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
             "START_UNHANDLED": "Say start to start a new game.",
-            "SCORE_UNHANDLED": "Try saying I scored 180,or remove the last score",
+            "SCORE_UNHANDLED": "Say your score.",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "WELCOME_TEXT": "I will keep score for your game of %s.",
@@ -527,7 +527,7 @@ function dartIntentToScore(newDartScore) {
 // Handle new dart or round score
 function scoreSpeech(isDouble) {
   var speechOutput = "";
-  var repromptSpeech = "SCORE_UNHANDLED";
+  var repromptSpeech = this.t("SCORE_UNHANDLED");
   var scores = this.attributes['scores'];
   var dartScores = this.attributes['dartScores'];
   var remaining = remainingValue.call(this);
@@ -609,7 +609,7 @@ function handleStatistics() {
   var scores = this.attributes['scores'];
   var remaining = remainingValue.call(this);
 
-  var repromptSpeech = "HELP_REPROMPT";
+  var repromptSpeech = this.t("HELP_REPROMPT");
   var speechOutput = "";
   var stats = statistics.call(this);
 
