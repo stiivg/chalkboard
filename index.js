@@ -27,7 +27,7 @@ var languageString = {
             "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
             "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
             "START_UNHANDLED": "Say start to start a new game.",
-            "SCORE_UNHANDLED": "Try saying I scored 180,or remove last score",
+            "SCORE_UNHANDLED": "Try saying I scored 180,or remove the last score",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "WELCOME_TEXT": "I will keep score for your game of %s.",
@@ -609,19 +609,20 @@ function handleStatistics() {
   var scores = this.attributes['scores'];
   var remaining = remainingValue.call(this);
 
-    var speechOutput = "";
-    var stats = statistics.call(this);
+  var repromptSpeech = "HELP_REPROMPT";
+  var speechOutput = "";
+  var stats = statistics.call(this);
 
-    if (scores.length == 0) {
-      speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
-    } else if (scores.length == 1) {
-      speechOutput = this.t("SINGLE_STATISTICS_MESSAGE", scores[scores.length-1].toString(),stats.remaining.toString());
-    } else if (remaining == 0) {
-      speechOutput = this.t("WON_STATISTICS_MESSAGE", stats.numRounds.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
-    } else {
-      speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
-    }
-    this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
+  if (scores.length == 0) {
+    speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
+  } else if (scores.length == 1) {
+    speechOutput = this.t("SINGLE_STATISTICS_MESSAGE", scores[scores.length-1].toString(),stats.remaining.toString());
+  } else if (remaining == 0) {
+    speechOutput = this.t("WON_STATISTICS_MESSAGE", stats.numRounds.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
+  } else {
+    speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
+  }
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
 }
 //test if the round score is at least the round darts so far
 function isScoreAboveDarts(score) {
