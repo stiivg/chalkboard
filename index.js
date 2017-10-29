@@ -25,8 +25,8 @@ var languageString = {
             "NO_MESSAGE": "Ok, I\'ve saved your score for later. Goodbye!",
             "CANCEL_MESSAGE": "Ok, let\'s play again soon.",
             "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
-            "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
-            "START_UNHANDLED": "Say start to start a new game.",
+            "HELP_REPROMPT": "You can start a new game, or remove the last score.",
+            "START_UNHANDLED": "Say start a new game, or set the start score to any value such as 701",
             "SCORE_UNHANDLED": "Say your score.",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
@@ -335,10 +335,18 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
 
 var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
     "helpTheUser": function () {
-        var speechOutput = this.t("HELP_MESSAGE");
-        var repromptText = this.t("HELP_REPROMPT");
+      var speechOutput = this.t("HELP_MESSAGE");
+      var repromptText = this.t("HELP_REPROMPT");
+      var remaining = remainingValue.call(this);
+      if (remaining == 0) { //game already won
+        this.handler.state = GAME_STATES.WON;
+        speechOutput = this.t("WON_UNHANDLED") + "," + this.t("HELP_REPROMPT");
+        repromptText = this.t("HELP_REPROMPT");
+        this.emit(":ask", speechOutput, repromptText);
+      } else {
         this.handler.state = GAME_STATES.SCORE;
         this.emit(":ask", speechOutput, repromptText);
+      }
     },
     "AMAZON.StartOverIntent": function () {
         this.handler.state = GAME_STATES.START;
