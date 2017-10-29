@@ -1,5 +1,5 @@
 "use strict";
-var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512'; //amzn1.ask.skill.6c2c61f8-54a6-40cc-a17b-ac23d00e46ba;  // TODO replace with your app ID (OPTIONAL).
+var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512';
 
 var GAME_STATES = {
     START: "_STARTMODE", // Entry point, start the game.
@@ -9,6 +9,7 @@ var GAME_STATES = {
 };
 // var scores = new Array();
 var BEST_OUT_LIMIT = 170; //Highest remainder with out in round option
+var AUTO_OUT_LIMIT = 100; //Highest remainder for automatic out option
 var outChart = require("./outChart");
 var OUT_CHART =  outChart["OUT_CHART"];
 
@@ -19,15 +20,14 @@ var OUT_CHART =  outChart["OUT_CHART"];
 var languageString = {
     "en-US": {
         "translation": {
-//          "GAME_NAME" : "Darts <say-as interpret-as="spell-out">501</say-as>", // Fails - needs exscape codes
-            "GAME_NAME" : "Chalkboard",
-            "ASK_MESSAGE_START": "Would you like to start playing?",
+            "GAME_NAME" : "Bull\'s-Eye",
             "STOP_MESSAGE": "Would you like to keep playing?",
+            "NO_MESSAGE": "Ok, I\'ve saved your score for later. Goodbye!",
             "CANCEL_MESSAGE": "Ok, let\'s play again soon.",
-            "NO_MESSAGE": "Ok, we\'ll play another time. Goodbye!",
-            "HELP_UNHANDLED": "Say yes to continue, or no to end the game.",
+            "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
+            "HELP_REPROMPT": "You can start a new game, remove the last score, or set the start score to any value such as 701",
             "START_UNHANDLED": "Say start to start a new game.",
-            "SCORE_UNHANDLED": "Try saying I scored 180",
+            "SCORE_UNHANDLED": "Say your score.",
             "NEW_GAME_MESSAGE": "Welcome to %s. ",
             "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
             "WELCOME_TEXT": "I will keep score for your game of %s.",
@@ -36,11 +36,15 @@ var languageString = {
             "BAD_START_SCORE_MESSAGE": "I did not understand your start score",
             "START_SCORE_RANGE_MESSAGE": "The start score must be between <say-as interpret-as=\"spell-out\">101</say-as> and 1000 and 1",
             "LAST_SCORE_MESSAGE": "Your last score was %s",
+            "LAST_DART_SCORE_MESSAGE": "Your last dart score was %s",
             "NO_LAST_SCORE_MESSAGE": "You have not scored yet",
             "GAME_OVER_MESSAGE": "Thank you for playing!",
             "SCORE_IS_MESSAGE": "Your score is %s. ",
             "BAD_SCORE": "I did not understand your score",
-            "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per dart of %s",
+            "SCORE_TOO_LOW_MESSAGE": "This score is less than the darts this round",
+            "BAD_DART_SCORE_MESSAGE": "I did not understand your dart score",
+            "WON_STATISTICS_MESSAGE": "You won in %s rounds, your highest score was %s, your lowest %s, with a points per round of %s",
+            "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per round of %s",
             "SINGLE_STATISTICS_MESSAGE": "After your first round you scored %s and have %s remaining.",
             "NO_OUT": "No three dart out",
             "BEST_OUT": "With %s remaining, the best out is ",
@@ -51,7 +55,8 @@ var languageString = {
             "WIN_TARGET": "You need double %s for the win",
             "BUST_MESSAGE": "Bust, you still have %s remaining",
             "NO_BUST_MESSAGE": "You cannot bust with %s remaining",
-            "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per dart",
+            "NO_WIN_MESSAGE": "You cannot win with %s remaining",
+            "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per round",
             "WON_UNHANDLED": "This game is over"
         }
     }
@@ -76,7 +81,7 @@ var newSessionHandlers = {
           this.attributes['scores'] = new Array();
           this.attributes['startScore'] = 301;
           this.attributes['gamesPlayed'] = 0;
-          this.attributes['dartNum'] = 1;
+          this.attributes['dartScores'] = new Array();
       }
 
       this.handler.state = GAME_STATES.START;
@@ -99,10 +104,10 @@ var newSessionHandlers = {
 var startStateHandlers = Alexa.CreateStateHandler(GAME_STATES.START, {
     "StartGame": function () {
         var speechOutput = this.t("NEW_GAME_MESSAGE", this.t("GAME_NAME")) + this.t("WELCOME_MESSAGE", this.attributes['startScore'].toString());
-        var repromptText = speechOutput;
+        var repromptText = this.t("HELP_MESSAGE");
 
         this.attributes['scores'] = []; //remove all scores
-        this.attributes['dartNum'] = 1;
+        this.attributes['dartScores'] = [];
 
         // Set the current state to score mode. The skill will now use handlers defined in scoreStateHandlers
         this.handler.state = GAME_STATES.SCORE;
@@ -115,22 +120,31 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     "LaunchRequest": function () {
       //initialize the attributes if this is the first time the DB is created
       if(Object.keys(this.attributes).length === 0) {
-          this.attributes['scores'] = new Array();
-          this.attributes['startScore'] = 301;
-          this.attributes['gamesPlayed'] = 0;
-          this.attributes['dartNum'] = 1;
+        this.attributes['scores'] = new Array();
+        this.attributes['startScore'] = 301;
+        this.attributes['gamesPlayed'] = 0;
+        this.attributes['dartScores'] = new Array();
       }
 
       var speechOutput = lastScoreSpeech.call(this) + "," + remainderSpeech.call(this);
-        this.emit(":ask", speechOutput, speechOutput);
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
+      this.emit(":ask", speechOutput, repromptSpeech);
     },
     "ScoreIntent": function () {
-        handleUserScore.call(this);
+      handleUserScore.call(this);
+    },
+
+    "DartScoreIntent": function () {
+      handleUserDartScore.call(this);
+    },
+
+    "DartBullIntent": function () {
+      handleUserBull.call(this);
     },
 
     "RemainderIntent": function () {
       var speechOutput = remainderSpeech.call(this);
-      this.emit(":tell", speechOutput);
+      this.emit(":ask", speechOutput);
     },
 
 
@@ -155,11 +169,15 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       };
     },
 
+    //removes the last dart score or round score
     "RemoveLastScoreIntent": function () {
+      var dartScores = this.attributes['dartScores'];
       var scores = this.attributes['scores'];
-      if (scores.length > 0) {
+      if (dartScores.length > 0) {
+        dartScores.pop();
+        this.emitWithState("RemainderIntent");
+      } else if (scores.length > 0) {
         scores.pop();
-        this.attributes['scores'] = scores;
         this.emitWithState("RemainderIntent");
       } else {
         var speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
@@ -169,23 +187,56 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 
     "BustIntent": function () {
       var speechOutput = "";
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
       if (remaining <= 180) { //ensure bust is possible
+        this.attributes['dartScores'] = []; //remove all dart scores
         scores.push(0); //add a zero round for statistics
         this.attributes['scores']= scores;
         speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
       }
-      this.emit(":tell", speechOutput);
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+    },
+//this means a dart missed the board and scored zero
+    "MissedIntent": function () {
+      var speechOutput = "";
+      var repromptSpeech = "";
+      var dartScores = this.attributes['dartScores'];
+      addDartScore.call(this, 0);
+      var speeches = scoreSpeech.call(this, true);
+      speechOutput = speeches.speechOutput;
+      repromptSpeech = speeches.repromptSpeech;
+      //always ask with dart score to be ready for next dart
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+    },
+
+    "WonIntent": function () {
+      var speechOutput = "";
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
+      var scores = this.attributes['scores'];
+      var remaining = remainingValue.call(this);
+      if (remaining <= 170) { //ensure win is possible
+        this.attributes['dartScores'] = []; //remove all dart scores
+        scores.push(remaining); //must have scored remainder
+        this.attributes['scores']= scores;
+        this.handler.state = GAME_STATES.WON;
+        this.attributes['gamesPlayed'] += 1;
+        speechOutput = gameWonSpeech.call(this);
+        repromptSpeech = this.t("HELP_REPROMPT");
+      } else {
+        speechOutput = this.t("NO_WIN_MESSAGE", remaining.toString());
+      }
+      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
     },
 
     "StatisticsIntent": function () {
         handleStatistics.call(this);
     },
 
-
+    //TODO handle darts remaining less than 3
     "BestOutIntent": function () {
         // console.log("DEBUG OUT_CHART: " + OUT_CHART.toString());
         var speechOutput = "";
@@ -195,22 +246,12 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
           var speeches = bestOutSpeech.call(this);
           speechOutput = speeches.speechOutput;
           repromptSpeech = speeches.repromptSpeech;
-        } else {
+        } else { //TODO handle this case in bestOutSpeech
           speechOutput = this.t("NO_BEST_OUT",remaining.toString())
+          repromptSpeech = this.t("SCORE_UNHANDLED")
         }
-        if (repromptSpeech == "") {
-          this.emit(":tell", speechOutput);
-        } else {
-          this.emit(":ask", speechOutput, repromptSpeech);
-        }
-    },
-
-    "DartScoreIntent": function () {
-        var OUT_CHART =  outChart["OUT_CHART"];
-        var speechOutput = bestOutSpeech.call(this);
-        this.emit(":tell", speechOutput, speechOutput);
-    },
-
+        this.emit(":ask", speechOutput, repromptSpeech);
+      },
 
     "AMAZON.StartOverIntent": function () {
         this.handler.state = GAME_STATES.START;
@@ -221,7 +262,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "AMAZON.HelpIntent": function () {
         this.handler.state = GAME_STATES.HELP;
-        this.emitWithState("helpTheUser", false);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.StopIntent": function () {
         this.handler.state = GAME_STATES.HELP;
@@ -237,8 +278,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in score state: " + this.event.request.reason);
-        this.attributes['scores'] = scores;
-        this.emit(':tell', "Goodbye!");
+        this.emit(':saveState', true);
 }
 });
 
@@ -246,11 +286,18 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
     "LastScoreIntent": function () {
       var speechOutput = lastScoreSpeech.call(this);
-      this.emit(":ask", speechOutput, speechOutput);
+      var repromptSpeech = this.t("HELP_REPROMPT");
+      this.emit(":ask", speechOutput, repromptSpeech);
     },
 
     "StatisticsIntent": function () {
         handleStatistics.call(this);
+    },
+
+    "RemoveLastScoreIntent": function () {
+      this.attributes['gamesPlayed'] -= 1;
+      this.handler.state = GAME_STATES.SCORE;
+      this.emitWithState("RemoveLastScoreIntent");
     },
 
     "AMAZON.StartOverIntent": function () {
@@ -262,7 +309,7 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
     },
     "AMAZON.HelpIntent": function () {
         this.handler.state = GAME_STATES.HELP;
-        this.emitWithState("helpTheUser", false);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.StopIntent": function () {
         this.handler.state = GAME_STATES.HELP;
@@ -276,19 +323,21 @@ var wonStateHandlers = Alexa.CreateStateHandler(GAME_STATES.WON, {
 
     "Unhandled": function () {
         var speechOutput = this.t("WON_UNHANDLED");
-        this.emit(":ask", speechOutput, "");
+        var repromptSpeech = this.t("HELP_REPROMPT");
+        this.emit(":ask", speechOutput, repromptSpeech);
     },
 
     "SessionEndedRequest": function () {
         console.log("Session ended in won state: " + this.event.request.reason);
+        this.emit(':saveState', true);
     }
 });
 
 var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
-    "helpTheUser": function (newGame) {
-        var askMessage = newGame ? this.t("ASK_MESSAGE_START") : this.t("REPEAT_QUESTION_MESSAGE") + this.t("STOP_MESSAGE");
-        var speechOutput = this.t("HELP_MESSAGE", GAME_LENGTH) + askMessage;
-        var repromptText = this.t("HELP_REPROMPT") + askMessage;
+    "helpTheUser": function () {
+        var speechOutput = this.t("HELP_MESSAGE");
+        var repromptText = this.t("HELP_REPROMPT");
+        this.handler.state = GAME_STATES.SCORE;
         this.emit(":ask", speechOutput, repromptText);
     },
     "AMAZON.StartOverIntent": function () {
@@ -296,39 +345,38 @@ var helpStateHandlers = Alexa.CreateStateHandler(GAME_STATES.HELP, {
         this.emitWithState("StartGame");
     },
     "AMAZON.RepeatIntent": function () {
-        var newGame = (this.attributes["speechOutput"] && this.attributes["repromptText"]) ? false : true;
-        this.emitWithState("helpTheUser", newGame);
+        this.emitWithState("helpTheUser");
     },
     "AMAZON.HelpIntent": function() {
-        var newGame = (this.attributes["speechOutput"] && this.attributes["repromptText"]) ? false : true;
-        this.emitWithState("helpTheUser", newGame);
+        this.emitWithState("helpTheUser");
+    },
+    "AMAZON.StopIntent": function () {
+        var speechOutput = this.t("STOP_MESSAGE");
+        this.emit(":ask", speechOutput, speechOutput);
     },
     "AMAZON.YesIntent": function() {
-        if (this.attributes["speechOutput"] && this.attributes["repromptText"]) {
-            this.handler.state = GAME_STATES.SCORE;
-            this.emitWithState("AMAZON.RepeatIntent");
+        var remaining = remainingValue.call(this);
+        if (remaining == 0) { //game already won
+          this.handler.state = GAME_STATES.WON;
+          this.emitWithState("StatisticsIntent");
         } else {
-            this.handler.state = GAME_STATES.START;
-            this.emitWithState("StartGame");
+          this.handler.state = GAME_STATES.SCORE;
+          this.emitWithState("LaunchRequest");
         }
     },
     "AMAZON.NoIntent": function() {
         var speechOutput = this.t("NO_MESSAGE");
         this.emit(":tell", speechOutput);
     },
-    "AMAZON.StopIntent": function () {
-        var speechOutput = this.t("STOP_MESSAGE");
-        this.emit(":ask", speechOutput, speechOutput);
-    },
     "AMAZON.CancelIntent": function () {
         this.emit(":tell", this.t("CANCEL_MESSAGE"));
     },
     "Unhandled": function () {
-        var speechOutput = this.t("HELP_UNHANDLED");
-        this.emit(":ask", speechOutput, speechOutput);
+      this.emitWithState("helpTheUser");
     },
     "SessionEndedRequest": function () {
         console.log("Session ended in help state: " + this.event.request.reason);
+        this.emit(':saveState', true);
     }
 });
 
@@ -352,6 +400,7 @@ function bestOutSpeech() {
     // console.log("DEBUG: OUT_CHART =" + OUT_CHART.toString());
     if (bestOutTargets.length == 0) { //test for none entry in out chart
       speechOutput = this.t("NO_BEST_OUT",remaining.toString())
+      repromptSpeech = this.t("SCORE_UNHANDLED")
     } else {
       for (var i = 0; i < bestOutTargets.length; i++) {
         repromptSpeech += targetToSpeech.call(this, bestOutTargets[i]);
@@ -394,41 +443,130 @@ function targetToSpeech(target) {
 function handleUserScore() {
     console.log("DEBUG: keys= " + Object.keys(this.attributes));
 
-    var scores = this.attributes['scores'];
     var speechOutput = "";
     var repromptSpeech = "";
-    var scoreSlotValid = isScoreSlotValid(this.event.request.intent);
-
-    if (scoreSlotValid) {
-      //slot values are strings so convert score value to a number and add to array
-      scores.push(parseInt(this.event.request.intent.slots.RoundScore.value));
-      var remaining = remainingValue.call(this);
-      if (remaining < 0 || remaining == 1) {
-        scores[scores.length-1] = 0; //convert bust score to zero
-        remaining = remainingValue.call(this); //re-calc remaining
-        speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
-      } else if (remaining == 0) { //the game has been won
-        this.handler.state = GAME_STATES.WON;
-        this.attributes['gamesPlayed'] += 1;
-        var stats = statistics.call(this);
-        speechOutput = this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppdScore.toString());
-      } else if (remaining <= BEST_OUT_LIMIT) {
-        var speeches = bestOutSpeech.call(this);
+    if (isScoreSlotValid(this.event.request.intent)) {
+      var scores = this.attributes['scores'];
+      var newScore = parseInt(this.event.request.intent.slots.RoundScore.value);
+      if (isScoreAboveDarts.call(this, newScore)) {
+        scores.push(newScore);
+        this.attributes['dartScores'] = []; //remove all dart scores
+        var speeches = scoreSpeech.call(this, true); //assume last dart was a double
         speechOutput = speeches.speechOutput;
         repromptSpeech = speeches.repromptSpeech;
-
       } else {
-        speechOutput = this.t("REMAINDER_MESSAGE", remaining.toString());
+        speechOutput = this.t("SCORE_TOO_LOW_MESSAGE");
       }
     } else {
-        speechOutput += this.t("BAD_SCORE");
+      speechOutput = this.t("BAD_SCORE");
     }
-    this.attributes['scores'] = scores;
-    if (repromptSpeech == "") {
-      this.emit(":tellWithCard", speechOutput, this.t("GAME_NAME"), speechOutput);
+    this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+
+}
+
+function handleUserBull() {
+  var speechOutput = "";
+  var repromptSpeech = "";
+  var newDartScore = 25; //bull score
+  var dartTarget = dartIntentToScore.call(this, newDartScore);
+  addDartScore.call(this, dartTarget.newDartScore);
+  var speeches = scoreSpeech.call(this, dartTarget.isDouble);
+  speechOutput = speeches.speechOutput;
+  repromptSpeech = speeches.repromptSpeech;
+  //always ask with dart score to be ready for next dart
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+}
+
+function handleUserDartScore() {
+  var speechOutput = "";
+  var repromptSpeech = "";
+  if (isDartScoreSlotValid(this.event.request.intent)) {
+    var newDartScore = parseInt(this.event.request.intent.slots.DartScore.value);
+    var dartTarget = dartIntentToScore.call(this, newDartScore);
+    addDartScore.call(this, dartTarget.newDartScore);
+    var speeches = scoreSpeech.call(this, dartTarget.isDouble);
+    speechOutput = speeches.speechOutput;
+    repromptSpeech = speeches.repromptSpeech;
+  } else {
+    speechOutput = this.t("BAD_DART_SCORE_MESSAGE");
+    repromptSpeech = this.t("HELP_MESSAGE");
+  };
+  //always ask with dart score to be ready for next dart
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+}
+
+//if third dart create round score
+function addDartScore(newDartScore) {
+  var dartScores = this.attributes['dartScores'];
+  if (dartScores.length == 2) { //on third dart create round score
+    var totalScore = dartScores[0] + dartScores[1] + newDartScore;
+    this.attributes['scores'].push(totalScore);
+    this.attributes['dartScores'] = [];
+  } else {
+    dartScores.push(newDartScore);
+  }
+}
+//convert multipliers to value such as 'double ten' = 20
+function dartIntentToScore(newDartScore) {
+  var isDouble = false;
+  if (isDartMultiplierSlotValid(this.event.request.intent)) {
+    var multiplier = this.event.request.intent.slots.Multiplier.value;
+    if (multiplier == "double") {
+      newDartScore = newDartScore + newDartScore;
+      isDouble = true;
+    } else if (multiplier == "triple") {
+      newDartScore = newDartScore + newDartScore + newDartScore;
+    }
+  }
+  return {
+    newDartScore: newDartScore,
+    isDouble: isDouble
+  };
+}
+
+// Handle new dart or round score
+function scoreSpeech(isDouble) {
+  var speechOutput = "";
+  var repromptSpeech = this.t("SCORE_UNHANDLED");
+  var scores = this.attributes['scores'];
+  var dartScores = this.attributes['dartScores'];
+  var remaining = remainingValue.call(this);
+  if (remaining < 0 || remaining == 1 || (remaining == 0 && isDouble == false)) { //Bust
+    if (dartScores.length > 0) {
+      scores.push(0); //add a bust round score
+      this.attributes['dartScores'] = []; //remove all dart scores
     } else {
-      this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+      scores[scores.length-1] = 0; //convert bust round score to zero
     }
+    remaining = remainingValue.call(this); //re-calc remaining
+    speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
+  } else if (remaining == 0) { //the game has been won if a double
+    if (dartScores.length > 0) {
+      var totalDartScore = dartScores.reduce(function(a, b) { return a + b; });
+      scores.push(totalDartScore); //add the darts to the round
+      this.attributes['dartScores'] = []; //remove all dart scores
+    }
+    this.handler.state = GAME_STATES.WON;
+    this.attributes['gamesPlayed'] += 1;
+    speechOutput = gameWonSpeech.call(this);
+  } else if (remaining <= AUTO_OUT_LIMIT) {
+    var speeches = bestOutSpeech.call(this);
+    speechOutput = speeches.speechOutput;
+    repromptSpeech = speeches.repromptSpeech;
+  } else {
+    speechOutput = this.t("REMAINDER_MESSAGE", remaining.toString());
+  }
+  this.attributes['scores'] = scores;
+  return {
+    speechOutput: speechOutput,
+    repromptSpeech: repromptSpeech
+  };
+}
+
+
+function gameWonSpeech() {
+  var stats = statistics.call(this);
+  return this.t("WON_MESSAGE", stats.numRounds.toString(), stats.ppRound.toString());
 }
 
 function remainderSpeech() {
@@ -441,7 +579,7 @@ function remainingToDouble(remaining) {
   var speechOutput = "";
   if (isEven(remaining) && remaining <= 40) {
     var doubleRemStr = (remaining/2).toString();
-    speechOutput = this.t("DOUBLE_WORD") + doubleRemStr;
+    speechOutput = this.t("DOUBLE_WORD") + " " + doubleRemStr;
   } else {
     speechOutput = remaining.toString();
   }
@@ -452,10 +590,15 @@ function remainingToDouble(remaining) {
 }
 
 function lastScoreSpeech() {
+  var dartScores = this.attributes['dartScores'];
   var scores = this.attributes['scores'];
   var speechOutput = "";
-  if (scores.length > 0) {
+  if (scores.length > 0 || dartScores.length > 0) {
+    if (dartScores.length > 0) {
+      speechOutput = this.t("LAST_DART_SCORE_MESSAGE", dartScores[dartScores.length-1].toString());
+    } else {
       speechOutput = this.t("LAST_SCORE_MESSAGE", scores[scores.length-1].toString());
+    }
   } else {
       speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
   }
@@ -464,24 +607,50 @@ function lastScoreSpeech() {
 
 function handleStatistics() {
   var scores = this.attributes['scores'];
+  var remaining = remainingValue.call(this);
 
-    var speechOutput = "";
-    var stats = statistics.call(this);
+  var repromptSpeech = this.t("HELP_REPROMPT");
+  var speechOutput = "";
+  var stats = statistics.call(this);
 
-    if (scores.length == 0) {
-        speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
-    } else if (scores.length == 1) {
-        speechOutput = this.t("SINGLE_STATISTICS_MESSAGE", scores[scores.length-1].toString(),stats.remaining.toString());
-    } else {
-        speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppdScore.toString());
-    }
-    this.emit(":askWithCard", speechOutput, speechOutput, this.t("GAME_NAME"), speechOutput);
+  if (scores.length == 0) {
+    speechOutput = this.t("NO_LAST_SCORE_MESSAGE");
+  } else if (scores.length == 1) {
+    speechOutput = this.t("SINGLE_STATISTICS_MESSAGE", scores[scores.length-1].toString(),stats.remaining.toString());
+  } else if (remaining == 0) {
+    speechOutput = this.t("WON_STATISTICS_MESSAGE", stats.numRounds.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
+  } else {
+    speechOutput = this.t("STATISTICS_MESSAGE", stats.numRounds.toString(),stats.remaining.toString(),stats.maxScore.toString(),stats.minScore.toString(),stats.ppRound.toString());
+  }
+  this.emit(":askWithCard", speechOutput, repromptSpeech, this.t("GAME_NAME"), speechOutput);
+}
+//test if the round score is at least the round darts so far
+function isScoreAboveDarts(score) {
+  var dartsTotal = 0;
+  var dartScores = this.attributes['dartScores'];
+  if (dartScores.length > 0) {
+    dartsTotal = dartScores.reduce(function(a, b) { return a + b; });
+  }
+  return score >= dartsTotal;
+
 }
 //make sure the round score is a number from 0 to 180
 function isScoreSlotValid(intent) {
     var answerSlotFilled = intent && intent.slots && intent.slots.RoundScore && intent.slots.RoundScore.value;
     var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.RoundScore.value));
     return answerSlotIsInt && parseInt(intent.slots.RoundScore.value) <= 180 && parseInt(intent.slots.RoundScore.value) >= 0;
+}
+//make sure the dart score is a number from 0 to 60
+function isDartScoreSlotValid(intent) {
+    var answerSlotFilled = intent && intent.slots && intent.slots.DartScore && intent.slots.DartScore.value;
+    var answerSlotIsInt = answerSlotFilled && !isNaN(parseInt(intent.slots.DartScore.value));
+    return answerSlotIsInt && parseInt(intent.slots.DartScore.value) <= 60 && parseInt(intent.slots.DartScore.value) >= 0;
+}
+
+//check if dart multiplier is double or triple
+function isDartMultiplierSlotValid(intent) {
+    var answerSlotFilled = intent && intent.slots && intent.slots.Multiplier && intent.slots.Multiplier.value;
+    return answerSlotFilled && (intent.slots.Multiplier.value == "double" || intent.slots.Multiplier.value == "triple")
 }
 
 //make sure the start score is a number between 101 and 1001
@@ -491,15 +660,19 @@ function isStartScoreSlotValid(intent) {
     return answerSlotIsInt && parseInt(intent.slots.StartScore.value) <= 1001 && parseInt(intent.slots.StartScore.value) >= 101;
 }
 
-//Calculate the sum of all scores and subtract from the game total
+//Calculate the sum of all scores and dart scores and subtract from the game total
 function remainingValue() {
   var scores = this.attributes['scores'];
+  var dartScores = this.attributes['dartScores'];
   var totalScore = 0;
 
   if (scores.length > 0) {
     totalScore = scores.reduce(function(a, b) { return a + b; });
   }
-  console.log("DEBUG: scores= " + scores.toString() + " startScore= " + this.attributes['startScore'].toString());
+  if (dartScores.length > 0) {
+    totalScore += dartScores.reduce(function(a, b) { return a + b; });
+  }
+  console.log("DEBUG: scores= " + scores.toString() + "dartScores= " + dartScores.toString() + " startScore= " + this.attributes['startScore'].toString());
   return this.attributes['startScore'] - totalScore;
 }
 
@@ -518,6 +691,7 @@ function statistics() {
     numRounds: numRounds,
     totalScore: totalScore,
     remaining: this.attributes['startScore'] - totalScore,
+    ppRound: Math.round(avgScore),
     ppdScore: Math.round(avgScore/3), // Points Per Dart
     minScore: minScore,
     maxScore: maxScore

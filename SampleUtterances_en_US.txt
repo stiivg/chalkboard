@@ -1,0 +1,56 @@
+AMAZON.StartOverIntent start a new game
+AMAZON.StartOverIntent play again
+AMAZON.StartOverIntent another game
+AMAZON.StartOverIntent try again
+BestOutIntent tell me my best out
+BestOutIntent out in three darts
+BestOutIntent out chart
+BestOutIntent best out
+BestOutIntent outshot
+BustIntent I am bust
+BustIntent bust
+DartBullIntent i hit the {Bull}
+DartBullIntent i hit the {Multiplier} {Bull}
+DartBullIntent i got a {Bull}
+DartBullIntent i got a {Multiplier} {Bull}
+DartScoreIntent I hit {DartScore}
+DartScoreIntent My Dart hit {DartScore}
+DartScoreIntent That dart was {DartScore}
+DartScoreIntent first dart {DartScore}
+DartScoreIntent second dart {DartScore}
+DartScoreIntent third dart {DartScore}
+DartScoreIntent I hit {Multiplier} {DartScore}
+DartScoreIntent My Dart hit {Multiplier} {DartScore}
+DartScoreIntent That dart was {Multiplier} {DartScore}
+DartScoreIntent first dart {Multiplier} {DartScore}
+DartScoreIntent second dart {Multiplier} {DartScore}
+DartScoreIntent third dart {Multiplier} {DartScore}
+LastScoreIntent what was the last score
+LastScoreIntent what was my last score
+LastScoreIntent tell me the last score
+LastScoreIntent last score
+LastScoreIntent what did I score last
+MissedIntent i Missed
+MissedIntent That Missed
+MissedIntent my dart Missed
+RemainderIntent what is left
+RemainderIntent what do I need
+RemainderIntent what is remaining
+RemoveLastScoreIntent Remove the last score
+RemoveLastScoreIntent delete the last score
+RemoveLastScoreIntent undo the last score
+RemoveLastScoreIntent forget the last score
+RemoveLastScoreIntent subtract the last score
+ScoreIntent i scored {RoundScore}
+ScoreIntent my score was {RoundScore}
+ScoreIntent {RoundScore} scored
+ScoreIntent I got {RoundScore}
+SetStartScoreIntent Start from {StartScore}
+SetStartScoreIntent set the start to {StartScore}
+SetStartScoreIntent play {StartScore}
+StatisticsIntent statistics
+StatisticsIntent tell me my statistics
+StatisticsIntent how am I doing
+WonIntent i won
+WonIntent I did it
+WonIntent got it
