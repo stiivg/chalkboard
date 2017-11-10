@@ -19,9 +19,8 @@ var Alexa = require("alexa-sdk");
 
 exports.handler = function(event, context, callback, test) {
     var alexa = Alexa.handler(event, context);
-    console.log("DEBUG: Handler-test= " + test.toString());
     alexa.appId = APP_ID;
-    if (test != true) {
+    if (test !== true) {
       alexa.dynamoDBTableName = 'chalkboardDB';
     }
 
@@ -101,7 +100,8 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
 
     "RemainderIntent": function () {
       var speechOutput = remainderSpeech.call(this);
-      this.emit(":ask", speechOutput);
+      var repromptSpeech = this.t("SCORE_UNHANDLED");
+      this.emit(":ask", speechOutput, repromptSpeech);
     },
 
 
@@ -151,7 +151,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
         this.attributes['dartScores'] = []; //remove all dart scores
         scores.push(0); //add a zero round for statistics
         this.attributes['scores']= scores;
-        speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remaining));
+        speechOutput = this.t("BUST_MESSAGE", remainingToDouble.call(this, remainingValue.call(this)));
       } else {
         speechOutput = this.t("NO_BUST_MESSAGE", remaining.toString());
       }
@@ -406,7 +406,7 @@ function targetToSpeech(target) {
 }
 
 function handleUserScore() {
-    console.log("DEBUG: keys= " + Object.keys(this.attributes));
+    // console.log("DEBUG: keys= " + Object.keys(this.attributes));
 
     var speechOutput = "";
     var repromptSpeech = "";
@@ -637,7 +637,7 @@ function remainingValue() {
   if (dartScores.length > 0) {
     totalScore += dartScores.reduce(function(a, b) { return a + b; });
   }
-  console.log("DEBUG: scores= " + scores.toString() + "dartScores= " + dartScores.toString() + " startScore= " + this.attributes['startScore'].toString());
+  // console.log("DEBUG: scores= " + scores.toString() + "dartScores= " + dartScores.toString() + " startScore= " + this.attributes['startScore'].toString());
   return this.attributes['startScore'] - totalScore;
 }
 
