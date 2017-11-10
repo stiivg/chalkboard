@@ -16,10 +16,29 @@
       "intent": "AMAZON.StopIntent"
     },
     {
+      "intent": "AMAZON.YesIntent"
+    },
+    {
+      "intent": "AMAZON.NoIntent"
+    },
+    {
       "intent": "BestOutIntent"
     },
     {
       "intent": "BustIntent"
+    },
+    {
+      "slots": [
+        {
+          "name": "Multiplier",
+          "type": "LIST_OF_MULTIPLES"
+        },
+        {
+          "name": "Bull",
+          "type": "BULL"
+        }
+      ],
+      "intent": "DartBullIntent"
     },
     {
       "slots": [
@@ -36,6 +55,9 @@
     },
     {
       "intent": "LastScoreIntent"
+    },
+    {
+      "intent": "MissedIntent"
     },
     {
       "intent": "RemainderIntent"
@@ -66,9 +88,6 @@
     },
     {
       "intent": "WonIntent"
-    },
-    {
-      "intent": "MissedIntent"
     }
   ]
 }

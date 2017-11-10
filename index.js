@@ -1,6 +1,8 @@
 "use strict";
 var APP_ID = 'amzn1.ask.skill.d86397e8-ceb5-4eed-a489-5f7c9795f512';
 
+var languageStrings = require("./bullseye-language");
+
 var GAME_STATES = {
     START: "_STARTMODE", // Entry point, start the game.
     SCORE: "_SCOREMODE", // Scoring mode.
@@ -13,63 +15,18 @@ var AUTO_OUT_LIMIT = 100; //Highest remainder for automatic out option
 var outChart = require("./outChart");
 var OUT_CHART =  outChart["OUT_CHART"];
 
-/**
- * When editing your questions pay attention to your punctuation. Make sure you use question marks or periods.
- * Make sure the first answer is the correct one. Set at least ANSWER_COUNT answers, any extras will be shuffled in.
- */
-var languageString = {
-    "en-US": {
-        "translation": {
-            "GAME_NAME" : "Bull\'s-Eye",
-            "STOP_MESSAGE": "Would you like to keep playing?",
-            "NO_MESSAGE": "Ok, I\'ve saved your score for later. Goodbye!",
-            "CANCEL_MESSAGE": "Ok, let\'s play again soon.",
-            "HELP_MESSAGE": "Set the score for the round by saying, I scored 100, or for an individual dart say, I hit triple nineteen",
-            "HELP_REPROMPT": "You can start a new game, or remove the last score.",
-            "START_UNHANDLED": "Say start a new game, or set the start score to any value such as 701",
-            "SCORE_UNHANDLED": "Say your score.",
-            "NEW_GAME_MESSAGE": "Welcome to %s. ",
-            "WELCOME_MESSAGE": "I will keep score for your game of <say-as interpret-as=\"spell-out\">%s</say-as>.",
-            "WELCOME_TEXT": "I will keep score for your game of %s.",
-            "REMAINDER_MESSAGE": "You have %s remaining",
-            "SET_START_SCORE_MESSAGE": "This game will start from <say-as interpret-as=\"spell-out\">%s</say-as>.",
-            "BAD_START_SCORE_MESSAGE": "I did not understand your start score",
-            "START_SCORE_RANGE_MESSAGE": "The start score must be between <say-as interpret-as=\"spell-out\">101</say-as> and 1000 and 1",
-            "LAST_SCORE_MESSAGE": "Your last score was %s",
-            "LAST_DART_SCORE_MESSAGE": "Your last dart score was %s",
-            "NO_LAST_SCORE_MESSAGE": "You have not scored yet",
-            "GAME_OVER_MESSAGE": "Thank you for playing!",
-            "SCORE_IS_MESSAGE": "Your score is %s. ",
-            "BAD_SCORE": "I did not understand your score",
-            "SCORE_TOO_LOW_MESSAGE": "This score is less than the darts this round",
-            "BAD_DART_SCORE_MESSAGE": "I did not understand your dart score",
-            "WON_STATISTICS_MESSAGE": "You won in %s rounds, your highest score was %s, your lowest %s, with a points per round of %s",
-            "STATISTICS_MESSAGE": "After %s rounds you have %s remaining, your highest score was %s, your lowest %s, with a points per round of %s",
-            "SINGLE_STATISTICS_MESSAGE": "After your first round you scored %s and have %s remaining.",
-            "NO_OUT": "No three dart out",
-            "BEST_OUT": "With %s remaining, the best out is ",
-            "NO_BEST_OUT": "With %s remaining there is no out this round",
-            "TREBLE_WORD": "Treble",
-            "DOUBLE_WORD": "Double",
-            "BULL_WORD": "Bull",
-            "WIN_TARGET": "You need double %s for the win",
-            "BUST_MESSAGE": "Bust, you still have %s remaining",
-            "NO_BUST_MESSAGE": "You cannot bust with %s remaining",
-            "NO_WIN_MESSAGE": "You cannot win with %s remaining",
-            "WON_MESSAGE": "Congratulations you have won in %s rounds, with %s points per round",
-            "WON_UNHANDLED": "This game is over"
-        }
-    }
-};
-
 var Alexa = require("alexa-sdk");
 
-exports.handler = function(event, context, callback) {
+exports.handler = function(event, context, callback, test) {
     var alexa = Alexa.handler(event, context);
+    console.log("DEBUG: Handler-test= " + test.toString());
     alexa.appId = APP_ID;
-    alexa.dynamoDBTableName = 'chalkboardDB';
+    if (test != true) {
+      alexa.dynamoDBTableName = 'chalkboardDB';
+    }
+
     // To enable string internationalization (i18n) features, set a resources object.
-    alexa.resources = languageString;
+    alexa.resources = languageStrings;
     alexa.registerHandlers(newSessionHandlers, startStateHandlers, helpStateHandlers, scoreStateHandlers, wonStateHandlers);
     alexa.execute();
 };
