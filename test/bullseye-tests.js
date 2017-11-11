@@ -562,7 +562,7 @@ describe("Bull's-Eye Skill", () => {
 			},
 			{
 				request: alexaTest.getIntentRequest("WonIntent"),
-				says: alexaTest.t("WON_MESSAGE","2", "141"), shouldEndSession: false, reprompts: alexaTest.t("HELP_REPROMPT"),
+				says: alexaTest.t("WON_MESSAGE","5", "60"), shouldEndSession: false, reprompts: alexaTest.t("HELP_REPROMPT"),
 				hasAttributes: {
 					// scores: '0',
 					startScore: 301,
