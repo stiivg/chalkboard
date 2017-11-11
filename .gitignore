@@ -56,3 +56,10 @@ typings/
 
 # dotenv environment variables file
 .env
+
+.DS_Store
+Archive.zip
+package.json
+speechAssets/
+test/.DS_Store
+test/test-doc.html
