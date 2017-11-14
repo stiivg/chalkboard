@@ -29,7 +29,7 @@
             "NO_BEST_OUT": "With %s remaining there is no out this round",
             "TREBLE_WORD": "Treble",
             "DOUBLE_WORD": "Double",
-            "BULL_WORD": "Bull",
+            "BULL_WORD": "Bullseye",
             "WIN_TARGET": "You need double %s for the win",
             "BUST_MESSAGE": "Bust, you still have %s remaining",
             "NO_BUST_MESSAGE": "You cannot bust with %s remaining",

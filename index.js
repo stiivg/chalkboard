@@ -175,7 +175,7 @@ var scoreStateHandlers = Alexa.CreateStateHandler(GAME_STATES.SCORE, {
       var repromptSpeech = this.t("SCORE_UNHANDLED");
       var scores = this.attributes['scores'];
       var remaining = remainingValue.call(this);
-      if (remaining <= 170) { //ensure win is possible
+      if (isWinPossible.call(this, remaining)) { //ensure win is possible
         this.attributes['dartScores'] = []; //remove all dart scores
         scores.push(remaining); //must have scored remainder
         this.attributes['scores']= scores;
@@ -356,7 +356,7 @@ function bestOutSpeech() {
     if (isEven(remaining)) {
       var doubleRemStr = (remaining/2).toString();
       speechOutput = this.t("WIN_TARGET",doubleRemStr);
-      repromptSpeech = this.t("DOUBLE_WORD") + doubleRemStr;
+      repromptSpeech = this.t("DOUBLE_WORD") + " " + doubleRemStr;
     } else {
       speechOutput = remainderSpeech.call(this);
     }
@@ -377,6 +377,14 @@ function bestOutSpeech() {
     speechOutput: speechOutput,
     repromptSpeech: repromptSpeech
   };
+}
+function isWinPossible(remaining) {
+  const noOutRemainders = [159, 162,163,165,166,168,169];
+  var possible = remaining <= 170; // must be 170 or less
+  if (noOutRemainders.includes(remaining)) { //and not in these values
+    possible = false;
+  }
+  return possible;
 }
 
 function isEven(n) {
